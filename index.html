@@ -1,0 +1,704 @@
+<!doctype html>
+<html lang="en">
+
+    <head>
+        <meta charset="utf-8">
+
+        <title>Itérateurs et générateurs en ES2015</title>
+
+        <meta name="author" content="Fabien Mauquié">
+
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, minimal-ui">
+
+        <link rel="stylesheet" href="css/reveal.css">
+        <link rel="stylesheet" href="css/theme/black.css" id="theme">
+        <link rel="stylesheet" href="css/perso.css" id="perso">
+
+        <!-- Code syntax highlighting -->
+        <link rel="stylesheet" href="lib/css/zenburn.css">
+
+        <!-- Printing and PDF exports -->
+        <script>
+            var link = document.createElement( 'link' );
+            link.rel = 'stylesheet';
+            link.type = 'text/css';
+            link.href = window.location.search.match( /print-pdf/gi ) ? 'css/print/pdf.css' : 'css/print/paper.css';
+            document.getElementsByTagName( 'head' )[0].appendChild( link );
+        </script>
+
+        <!--[if lt IE 9]>
+        <script src="lib/js/html5shiv.js"></script>
+        <![endif]-->
+    </head>
+
+    <body>
+
+        <div class="reveal">
+
+            <!-- Any section element inside of this container is displayed as a slide -->
+            <div class="slides">
+                <section>
+                    <h1>ES2015</h1>
+                    <h3>Itérateurs et générateurs</h3>
+                    <p><small>Node.js Paris &ac; 19/01/2016</small></p>
+                    <p><small>Fabien Mauquié</small></p>
+                    <p>
+                        <small><a target="_blank" href="https://fmauquie.github.io/nodejsparis-es2015-iterateurs-generateurs">Github</a></small>
+                        <br/>
+                        <a rel="license" target="_blank" href="http://creativecommons.org/licenses/by/3.0/fr/"><img alt="Licence Creative Commons" style="border-width:0" src="https://i.creativecommons.org/l/by/3.0/fr/88x31.png" /></a>
+                    </p>
+                </section>
+
+                <section>
+                    <ul>
+                        <li>Itérables et itérateurs</li>
+                        <li>Générateurs</li>
+                        <li>Cas d'utilisation</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h2>ES2015</h2>
+                    <ul>
+                        <li>Le Javascript d'<b>aujourd'hui</b> (17 juin 2015)</li>
+                        <li><code>node</code></li>
+                        <li>Chrome, Firefox, Edge</li>
+                        <li>Transpilers</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <section>
+                        <h2>Itérables et itérateurs</h2>
+                        <ul>
+                            <li>Protocole commun pour l'itération</li>
+                            <li>Implémenté par les collections (Set, Map, …)</li>
+                            <li>Utilisé par plein d'opérateurs</li>
+                        </ul>
+                    </section>
+                    <section>
+                        <h3>for ... of</h3>
+                        <pre><code data-trim>
+for (let [i, elem] of anArray.entries()) {
+    console.log(`index: ${i}, value: ${elem}`);
+}
+                        </code></pre>
+                    </section>
+                    <section>
+                        <h3>Spread</h3>
+                        <pre><code data-trim data-noescape>
+let aMap = new Map().set('a', 1).set('b', 2);
+aMap.entries(); // MapIterator { [ 'a', 1 ], [ 'b', 2 ] }
+
+let plop = ['p', <mark>...</mark>aMap.entries(), 'lop'];
+plop; // [ 'p', [ 'a', 1 ], [ 'b', 2 ], 'lop' ]
+                        </code></pre>
+                    </section>
+                    <section>
+                        <h3>Déstructuration</h3>
+                        <pre><code data-trim data-noescape>
+let aSet = new Set().add('a').add('b');
+
+let <mark>[a, b]</mark> = aSet;
+a; // 'a'
+b; // 'b'
+
+aSet.add('c');
+let [a2, <mark>...</mark>bc] = aSet;
+bc; // [ "b", "c" ]
+                        </code></pre>
+                        <b>Pas encore implémenté dans V8</b>
+                    </section>
+                    <section>
+                        <h3>Mais aussi…</h3>
+                        <ul>
+                            <li>Array.from()</li>
+                            <li>Promise.all(iterableOverPromises).then(…);<br/>
+                                Promise.race(iterableOverPromises).then(…);</li>
+                            <li>yield*</li>
+                        </ul>
+                    </section>
+                    <section>
+                        <h3>Object</h3>
+<pre><code data-trim>
+let obj = {prop1: true, prop2: false};
+
+for (let prop of obj) {
+// TypeError: obj[Symbol.iterator] is not a function
+}
+</code></pre>
+                    </section>
+                </section>
+
+                <section>
+                    <section>
+                        <h2>Implémenter un itérable</h2>
+<pre class="stretch"><code data-trim>
+let iterable = {
+    [Symbol.iterator]() {
+        let step = 0;
+        return {
+            next() {
+                if (step <= 2) {
+                    step++;
+                }
+                switch (step) {
+                case 1:
+                    return { value: 'Une valeur', done: false };
+                case 2:
+                    return { value: 'deux valeurs', done: false };
+                default:
+                    return { value: undefined, done: true };
+                }
+            }
+        };
+    }
+};
+</code></pre>
+                    </section>
+                    <section>
+                        <h2>AAAAAAAAAAAAAAAH !</h2>
+                        <p class="fragment"><small>Les protocoles d'itération</small></p>
+                        <ul>
+                            <li class="fragment">Symbol.iterator</li>
+                            <li class="fragment">next()</li>
+                            <li class="fragment">{value: 'plop1', done: false}</li>
+                            <li class="fragment">{value: 'plopFinal', done: true}</li>
+                        </ul>
+                    </section>
+                    <section>
+                        <h2>Définition</h2>
+<pre><code data-trim data-noescape>
+let iterable = {
+    <mark>[Symbol.iterator]()</mark> {
+        return {
+            value: 0,
+            <mark>next()</mark> {
+                return <mark>{value: ++value}</mark>;
+            }
+        };
+    }
+};
+</code></pre>
+                    </section>
+                    <section>
+                        <h2>Itérateurs itérables</h2>
+<pre><code data-trim>
+let iterable = {
+    [Symbol.iterator]() {
+        return this;
+    },
+    currentValue: 0,
+    next() {
+        return {value: ++currentValue};
+    }
+};
+</code></pre>
+                        <div class="fragment">
+                            <p>C'est comme ça dans les collections ES2015</p>
+<pre><code data-trim>
+let arr = [];
+let iterator = arr[Symbol.iterator]();
+iterator[Symbol.iterator]() === iterator; // true
+</code></pre>
+                        </div>
+                    </section>
+                    <section>
+<pre><code data-trim>
+let peopleCSV = [['Nom', 'Prénom'], ['Fabien', 'Mauquié']];
+let itPeople = peopleCSV[Symbol.iterator]();
+
+// Remove header line
+itPeople.next();
+
+for (let [name, surname] of itPeople) {
+    console.log(`Name: ${name}, Surname: ${surname}`);
+}
+</code></pre>
+                    </section>
+                    <section>
+<pre><code data-trim data-noescape>
+let arr = ['a', 'b'];
+let iterator = arr[Symbol.iterator]();
+
+<span class="fragment">iterator.next(); // {value: 'a', done: false}</span>
+<span class="fragment">iterator.next(); // {value: 'b', done: false}</span>
+<span class="fragment">iterator.next(); // {value: undefined, done: true}</span>
+</code></pre>
+                    </section>
+                </section>
+
+                <section>
+                    <section>
+                        <h2>Générateurs</h2>
+                        <ul>
+                            <li>Fonctions qui peuvent se mettre en pause
+                                <ul>
+                                    <li><code>function*</code></li>
+                                    <li><code>yield</code></li>
+                                </ul>
+                            </li>
+                            <li class="fragment" data-fragment-index="1">Implémenter des itérables (facilement)</li>
+                            <li class="fragment" data-fragment-index="1">Linéariser du code asynchrone</li>
+                        </ul>
+                    </section>
+                    <section>
+                        <h3>Un exemple !</h3>
+<pre><code data-trim data-noescape>
+function* gen() {
+    console.log('A');
+    yield 'A';
+    console.log('B');
+    return 'B';
+}
+
+let iterator = gen();
+
+<span class="fragment">iterator.next(); // console: 'A'; {value: 'A', done: false}</span>
+<span class="fragment">iterator.next(); // console: 'B'; {value: 'B', done: true}</span>
+<span class="fragment">iterator.next(); // {value: undefined, done: true}</span>
+</code></pre>
+                    </section>
+                    <section>
+                        <h3>Création</h3>
+<pre class="stretch"><code data-trim>
+// Déclaration
+function* gen() {
+    // ...
+}
+
+// Assignation
+let gen2 = function* () { /* ... */ };
+
+// Dans un objet
+let obj = {
+    * gen() { // gen: function* gen() {
+        // ···
+    }
+};
+
+// Classe. Aucun navigateur ne supporte class aujourd'hui
+// FF et Edge s'y mettent...
+class UneClass {
+    * gen() {
+        // ···
+    }
+}
+</code></pre>
+                    </section>
+                    <section>
+                        <h3>Rôles des générateurs</h3>
+                        <ul>
+                            <li>Itérateurs (producteurs de données)</li>
+                            <li>Observateurs (consommateurs de données)</li>
+                            <li>Coroutines (les deux)</li>
+                        </ul>
+                    </section>
+                </section>
+                <section>
+                    <section>
+                        <h2>Créer des itérateurs avec les générateurs</h2>
+                    </section>
+                    <section>
+                        <h3><code>yield</code> et <code>return</code></h3>
+<pre><code data-trim data-noescape>
+function* gen() {
+    yield 'A';
+    return 'B';
+}
+
+let iterator = gen();
+
+<span class="fragment">iterator.next(); // {value: 'A', done: false}</span>
+<span class="fragment">iterator.next(); // {value: 'B', done: true}</span>
+</code></pre>
+<pre class="fragment"><code data-trim>
+for (let valeur of gen()) {
+    console.log(valeur);
+}
+
+[...gen()]; // ['A']
+</code></pre>
+                        <p class="fragment">
+                            La plupart des structures d'itération ne prennent pas en compte la valeur de retour
+                        </p>
+                    </section>
+                    <section>
+                        <h3><code>yield*</code></h3>
+<pre><code data-trim>
+function* gen2() {
+    yield 'C';
+    let b = yield* gen();
+    yield b;
+}
+
+[...gen2()]; // [ 'C', 'A', 'B' ]
+</code></pre>
+<pre class="fragment"><code data-trim>
+function* gen3() {
+    yield* ['un', 'autre', 'iterable'];
+}
+
+[...gen3()]; // [ 'un', 'autre', 'iterable' ]
+</code></pre>
+                    </section>
+                    <section>
+                        <h3>Itéreration récursive</h3>
+<pre class="stretch"><code data-trim>
+function* iterateOnTree(head) {
+    if (!head) return;
+
+    yield head.value;
+    yield* iterateOnTree(head.left);
+    yield* iterateOnTree(head.right);
+}
+
+[...iterateOnTree({
+    value: 'A',
+    left: {
+        value: 'B',
+        left: {value: 'C'}
+    },
+    right: {
+        value: 'D'
+    }
+})]; // [ 'A', 'B', 'C', 'D' ]
+</code></pre>
+                    </section>
+                    <section>
+                        <h3><code>yield</code> ne fonctionne que dans un générateur</h3>
+<pre><code data-trim>
+function* aie() {
+    setTimeout(() => (yield));
+}
+// SyntaxError: arrow function may not contain yield
+</code></pre>
+                    </section>
+                </section>
+
+                <section>
+                    <section>
+                        <h3>Générateurs consommateurs</h3>
+                        <ul>
+                            <li>Envoyer des valeurs avec <code>next(value)</code></li>
+                            <li>Forcer un retour avec <code>return(value)</code></li>
+                            <li>Lancer une erreur avec <code>throw(error)</code></li>
+                        </ul>
+                    </section>
+                    <section>
+                        <h3>Écouter des valeurs</h3>
+<pre><code data-trim data-noescape>
+function* consommateur() {
+    console.log('Démarré');
+    console.log(`1. ${yield}`);
+    console.log(`2. ${yield}`);
+    return 'termine';
+}
+
+let iterator = consommateur();
+<span class="fragment">// "pomper" pour démarrer
+iterator.next(); // Démarré ; {value: undefined, done: false}</span>
+
+// Envoyer des valeurs
+<span class="fragment">iterator.next('un !');
+// 1. un !   ; {value: undefined, done: false}</span>
+<span class="fragment">iterator.next('deux !');
+// 2. deux ! ; {value: 'termine', done: true}</span>
+</code></pre>
+                    </section>
+                    <section>
+                        <h3><code>yield</code> est asymétrique</h3>
+                        <ul>
+                            <li><code>yield</code> renvoie la valeur à sa droite</li>
+                            <li>L'exécution s'arrête au <code>yield</code></li>
+                            <li>L'exécution reprend à gauche de <code>yield</code> avec la valeur passée à <code>next()</code></li>
+                        </ul>
+                    </section>
+                    <section>
+                        <h3><code>return()</code></h3>
+                        <p>Force un 'return' à l'endroit où le générateur est arrêté</p>
+<pre><code data-trim data-noescape>
+function* avecReturn() {
+    try {
+        console.log('Démarré');
+        yield;
+        console.log('On ne devrait pas passer là');
+    } finally {
+        console.log('on est parti');
+    }
+}
+
+let iterator = avecReturn();
+iterator.next(); // Démarré ;  {value: undefined, done: false}
+
+// Forcer un retour
+<span class="fragment">iterator.return('stop');
+// on est parti ; {value: 'stop', done: true}</span>
+</code></pre>
+                    </section>
+                    <section>
+                        <h3>Capturer le <code>return()</code></h3>
+<pre><code data-trim data-noescape>
+function* empecherReturn() {
+    try {
+        console.log('Démarré');
+        yield;
+        console.log('On ne devrait pas passer là');
+    } finally {
+        yield 'ahah!';
+    }
+}
+
+let iterator = empecherReturn();
+iterator.next(); // Démarré ;  {value: undefined, done: false}
+
+iterator.return('stop'); // <span class="fragment">{value: 'ahah!', done: false}</span>
+<span class="fragment">iterator.next();         // {value: 'stop', done: true}</span>
+</code></pre>
+                        <em class="fragment">Documentez !</em>
+                    </section>
+                    <section>
+                        <h3><code>throw()</code></h3>
+                        <p>Lance une erreur à l'endroit où le générateur est arrêté</p>
+<pre><code data-trim data-noescape>
+function* avecThrow() {
+    console.log('Démarré');
+    yield;
+    console.log('On ne devrait pas passer là');
+}
+
+let iterator = avecThrow();
+
+// Forcer une erreur
+<span class="fragment">iterator.throw(new Error('aaaaargh !'));
+// Error: aaaargh !</span>
+</code></pre>
+                        <p class="fragment">
+                            Il est possible de catcher l'erreur avec <code>try { ... } catch(e) { ... }</code>
+                        </p>
+                    </section>
+                    <section>
+                        <h3>Générateurs nouveaux-nés</h3>
+<pre><code data-trim data-noescape>
+function* newborn() {
+    yield;
+}
+
+let iterator = newborn();
+
+iterator.<mark>next</mark>('une valeur');
+// Erreur ! on n'est pas sur un yield
+
+iterator.<mark>return</mark>('plop');                 // OK
+iterator.<mark>throw</mark>(new Error('aaaaargh !')); // OK
+</code></pre>
+                    </section>
+                    <section>
+                        <h3>Et avec <code>yield*</code> ?</h3>
+                        <ul>
+                            <li><code>throw()</code> se comporte comme une exception, elle se propage du <code>yield</code> où on est en pause vers l'appelant</li>
+                            <li><code>return()</code> se comporte aussi comme une exception (par rapport aux <code>finally</code>)</li>
+                        </ul>
+                    </section>
+                    <section>
+                        <h3>Pattern lazy pushing</h3>
+<pre class="stretch"><code data-trim>
+function* sum(sink) {
+    var accumulator = 0;
+    try {
+        while(true) {
+            accumulator += yield;
+        }
+    } finally {
+        sink(accumulator);
+    }
+}
+
+function* filterNumbers(sink) {
+    sink.next(); // Amorçage
+    try {
+        while (true) {
+            let word = yield;
+            if (/[\d+]/.test(word)) {
+                sink.next(parseInt(word));
+            }
+        }
+    } finally {
+        sink.return();
+    }
+}
+
+let iterator = filterNumbers(sum(console.log.bind(console)));
+iterator.next(); // Amorçage
+
+iterator.next('J\'ai');
+iterator.next('20');
+iterator.next('minutes');
+iterator.next('pour');
+iterator.next('120');
+iterator.next('slides');
+iterator.return();
+</code></pre>
+                    </section>
+                </section>
+
+                <section>
+                    <section>
+                        <h2>Coroutines</h2>
+                        <ul>
+                            <li><code>yield</code>er des promises</li>
+                            <li><code>next()</code> avec le résultat</li>
+                            <li><code>throw()</code> avec l'erreur</li>
+                        </ul>
+                    </section>
+                    <section>
+                        <h3>Rappel: les promises</h3>
+<pre class="stretch"><code data-trim>
+fetch('json/entry.json')
+    .then(function(response) {
+        return response.json();
+    })
+    .then(function(json) {
+        return json.id;
+    })
+    .then(function(id) {
+        return fetch('/json/' + id);
+    })
+    .then(function(response) {
+        return response.json();
+    })
+    .then(function(specifics) {
+        return Promise.all(specifics.map(obj => fetch('/json/' + obj.id));
+    })
+    .then(function(fetchedObjects) {
+        return Promise.all(fetchedObjects.map(obj => obj.json()));
+    })
+    .then(console.log.bind(console, 'objets:'))
+    .catch(console.error.bind(console, 'aaargh'))
+;
+</code></pre>
+                    </section>
+                    <section>
+                        <h3>... en coroutine</h3>
+<pre class="stretch"><code data-trim>
+function* fetchObjectList() {
+    let response = yield fetch('json/entry.json');
+    let id = (yield response.json()).id;
+
+    let specifics = yield fetch(`json/${id}`);
+
+    var fetchedObjects = yield Promise.all(
+        (yield specifics.json()).map(obj => fetch(`json/${obj.id}`))
+    );
+
+    return yield Promise.all(fetchedObjects.map(obj => obj.json()));
+}
+
+co(function* () {
+    try {
+        let objects = yield* fetchObjectList();
+
+        console.log('objets:', ...objects);
+        return objects;
+    } catch(e) {
+        console.error('aaargh', e);
+    }
+});
+</code></pre>
+                    </section>
+                    <section>
+                        <h3>Lancer les coroutines</h3>
+                        <p>Si on sait qu'on ne yield que des promises…</p>
+<pre><code data-trim>
+function co(generator) {
+    let iterator = generator();
+
+    let runNext = function(promise) {
+        promise.then(function(res) {
+            let next = iterator.next(res);
+            if (!next.done) {
+                runNext(next.value);
+            }
+        })
+        .catch(function(err) {
+            iterator.throw(err);
+        });
+    }
+
+    runNext(iterator.next().value);
+}
+</code></pre>
+                    </section>
+                    <section>
+                        <h2><code>return yield</code> ?</h2>
+<pre><code data-trim data-noescape>
+function* returnYield() {
+    return yield 'A';
+}
+
+let iterator = returnYield();
+
+<span class="fragment">iterator.next();         // {value: 'A', done: false}</span>
+<span class="fragment">iterator.next('coucou!); // {value: 'coucou!', done: true}</span>
+</code></pre>
+                    </section>
+                </section>
+                <section>
+                    <section>
+                        <h2>Utilisation</h2>
+                        <ul>
+                            <li>Itérateurs</li>
+                            <li>Mise en pause de tâches longues</li>
+                            <li>Asynchrone (<a target="_blank" href="https://github.com/tj/co">co</a>)</li>
+                            <li>Communicating Sequential Processes (<a target="_blank" href="https://github.com/ubolonton/js-csp">js-csp</a>)</li>
+                        </ul>
+                    </section>
+                    <section>
+                        <h2>Pour aller plus loin</h2>
+                        <ul>
+                            <li><a target="_blank" href="http://www.2ality.com/2015/02/es6-iteration.html">Iterables and iterators in ECMAScript 6 (2ality)</a></li>
+                            <li><a target="_blank" href="http://www.2ality.com/2015/03/es6-generators.html">ES6 generators in depth (2ality)</a></li>
+                            <li><a target="_blank" href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Iteration_protocols">Iteration protocols (MDN)</a></li>
+                        </ul>
+                    </section>
+                    <section>
+                        <h2>Merci !</h2>
+                        <small>Questions ?</small>
+                    </section>
+                </section>
+            </div>
+        </div>
+
+        <script src="lib/js/head.min.js"></script>
+        <script src="js/reveal.js"></script>
+
+        <script>
+
+            // Full list of configuration options available at:
+            // https://github.com/hakimel/reveal.js#configuration
+            Reveal.initialize({
+                controls: true,
+                progress: true,
+                history: true,
+                center: true,
+
+                transition: 'slide', // none/fade/slide/convex/concave/zoom
+
+                // Optional reveal.js plugins
+                dependencies: [
+                    { src: 'lib/js/classList.js', condition: function() { return !document.body.classList; } },
+                    { src: 'plugin/markdown/marked.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+                    { src: 'plugin/markdown/markdown.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+                    { src: 'plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } },
+                    { src: 'plugin/zoom-js/zoom.js', async: true },
+                    { src: 'plugin/notes/notes.js', async: true }
+                ]
+            });
+
+        </script>
+
+    </body>
+</html>
